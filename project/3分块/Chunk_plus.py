@@ -75,7 +75,7 @@ class My_Chunk_08A():
 
         res6 = self.same_prefix(res5)
 
-        return re6
+        return res6
 
 
 
