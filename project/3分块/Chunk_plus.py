@@ -23,6 +23,7 @@ class My_Chunk_08A():
             def text_find_to_max_size(text_find):
                 res_split = text_find.split('。')
                 print(len(res_split))
+                return [text_find]
                 return res_split
             flag = False
             if finaly_len != self.max_size:
@@ -193,18 +194,19 @@ class My_Chunk_08A():
                 # 添加第一页
                 all_page_num.append(page_num)
 
-        # '''
-        # 测试
-        # '''
-        # for j,item in enumerate(all_page_num[:set_len]):
-        #     for len_item in item:
+        '''
+        测试
+        '''
+        # for j,item in enumerate(all_page_num[:set_len],start=1):
+        #     ite = item
+        #     for iss,len_item in enumerate(item,start=1):
         #         print(len_item)
         #         print('len(i[content])',len(len_item['content']))
-        #         print('一页几个chunk',len(item))
-        #         print('page',j)
+        #         print('一页几个chunk',len(ite))
+        #         print('page',j,'chunk',iss)
         #         print('*******************************************************************************************************************************************')
         #     print('--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------')
-
+        #
 
 
 
@@ -226,89 +228,66 @@ class My_Chunk_08A():
         '''
     #2.1  2.1.1
     def child_title(self,pages_text_list):
-        pass
+        import re
 
-    '''
-     输入类型[[{'content':'','ok_split':True or False}......]，[{'content':'','ok_split':True or False}......]，[{'content':'','ok_split':True or False}......]......]
-    返回类型[[{'content':'','ok_split':True or False}......]，[{'content':'','ok_split':True or False}......]，[{'content':'','ok_split':True or False}......]......]
-        '''
-    #特殊字眼第一节 第二节不合
-    def  big_tile(self,pages_text_list):
-        result = []  # 存储处理后的文本块，每个文本块包含文本内容和是否可以进一步分割的标志
+        def split_text_into_blocks(text):
+            """
+            Split the given text into blocks based on titles and sentences.
 
-        for text_list in pages_text_list:  # 遍历每个页面上的文本块列表
-            chunks = []  # 存储当前页面文本块的处理结果
-            for item in text_list:  # 遍历文本块列表中的每个文本项
-                text = item['content']  # 获取文本内容
-                ok_split = item['ok_split']  # 获取是否可以进一步分割的标志
+            Args:
+            text (str): The input text to be split.
 
-                if  ok_split:  # 如果不需要进一步分割
-                    # 将整个文本作为一个块添加到chunks列表中
-                    chunks.append(item)
-                    continue  # 跳过本次循环的剩余代码，继续处理下一个文本项
+            Returns:
+            list: A list of text blocks.
+            """
 
-                lines = text.split('\n')  # 将文本按行分割成列表
-                i = 0  # 初始化行索引
+            # 编译正则表达式，匹配以数字标题开始的行
+            title_pattern = re.compile(r'^(\d+(\.\d+)*)\s+', re.MULTILINE)
 
-                while i < len(lines):  # 遍历文本中的每一行
-                    # 检测章节标题（例如：第一节）
-                    if re.match(r'^(第[一二三四五六七八九十]\节)', lines[i]):
-                        header = lines[i]  # 保存当前行为章节标题
-                        content = []  # 初始化章节内容列表
-                        i += 1  # 移动到下一行
+            # 找到所有匹配项的起始索引
+            title_matches = [m.start() for m in title_pattern.finditer(text)]
 
-                        while i < len(lines) and not re.match(r'^(第[一二三四五六七八九十]\节)', lines[i]):
-                            # 检测子标题（例如：1.）
-                            if re.match(r'^([1-9]\.?)', lines[i]):
-                                subheader = lines[i]  # 保存当前行为子标题
-                                subcontent = []  # 初始化子内容列表
-                                i += 1  # 移动到下一行
+            # 将每个标题及其后面的文本分割成块
+            blocks = []
+            for i in range(len(title_matches)):
+                start = title_matches[i]
+                end = len(text) if i == len(title_matches) - 1 else title_matches[i + 1]
+                block = text[start:end].strip()
+                blocks.append(block)
 
-                                while i < len(lines) and not re.match(r'^([1-9]\.?)', lines[i]) and not re.match(
-                                        r'^(第[一二三四五六七八九十]\节)', lines[i]):
-                                    subcontent.append(lines[i])  # 添加子内容
-                                    i += 1  # 移动到下一行
+            # 检查最后一个块是否需要进一步分割
+            if blocks:  # 确保blocks不为空
+                sentence_pattern = re.compile(r'\.\s*\n')
+                last_block_sentences = sentence_pattern.split(blocks[-1])
+                if len(last_block_sentences) > 1:
+                    # 如果最后一个块包含多个句子，分割它们
+                    blocks[-1:] = [sentence.strip() for sentence in last_block_sentences if sentence.strip()]
 
-                                if len(subcontent) > 0:
-                                    # 将子标题和内容作为一个块添加到chunks列表中
-                                    chunks.append(
-                                        {'content': subheader + '\n' + '\n'.join(subcontent), 'ok_split': True})
-                            else:
-                                content.append(lines[i])  # 添加章节内容
-                                i += 1  # 移动到下一行
+            return blocks
 
-                        if len(content) > 0:
-                            # 将章节标题和内容作为一个块添加到chunks列表中
-                            chunks.append({'content': header + '\n' + '\n'.join(content), 'ok_split': True})
+        new_con_pages = []
+        for  item_page in pages_text_list:
+            new_page = []
+            for item in item_page:
+                flg = item['ok_split']
+                if flg:
+                    new_page.append(item)
+                else:
+                    res_page_item_select_list = split_text_into_blocks(item['content'])
+                    for seg in res_page_item_select_list:
+                        items = {'content': seg, 'ok_split': False }
+                        new_page.append(items)
+            new_con_pages.append(new_page)
 
-                    # 检测其他类型的标题（例如：Title - 或者 附）
-                    elif re.match(r'^([a-zA-Z]+)\s+[-=]{3,}', lines[i]) or re.match(r'^附', lines[i]):
-                        header = lines[i]  # 保存当前行为其他类型的标题
-                        content = []  # 初始化内容列表
-                        i += 1  # 移动到下一行
 
-                        while i < len(lines) and not re.match(r'^([a-zA-Z]+)\s+[-=]{3,}', lines[i]) and not re.match(
-                                r'^附', lines[
-                                    i]) and not re.match(r'^(第[一二三四五六七八九十]\节)', lines[i]):
-                            content.append(lines[i])  # 添加内容
-                            i += 1  # 移动到下一行
 
-                        if len(content) > 0:
-                            # 将标题和内容作为一个块添加到chunks列表中
-                            chunks.append({'content': header + '\n' + '\n'.join(content), 'ok_split': True})
 
-                    # 处理单独的行
-                    else:
-                        # 将单独的行作为一个块添加到chunks列表中
-                        chunks.append({'content': lines[i], 'ok_split': False})
-                        i += 1  # 移动到下一行
-
-            result.append(chunks)  # 将当前页面的处理结果添加到最终结果列表中
         '''
         测试
         '''
         set_len = 5
-        for j,item in enumerate(result[:set_len]):
+        for j,item in enumerate(new_con_pages[:set_len]):
+            print('一共几个chunk', len(item))
             for len_item in item:
                 print(len_item)
                 print('len(i[content])',len(len_item['content']))
@@ -317,7 +296,83 @@ class My_Chunk_08A():
                 print('*******************************************************************************************************************************************')
             print('--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------')
 
-        return result  # 返回处理后的文本块列表
+        return new_con_pages  # 返回处理后的文本块列表
+
+
+
+    '''
+     输入类型[[{'content':'','ok_split':True or False}......]，[{'content':'','ok_split':True or False}......]，[{'content':'','ok_split':True or False}......]......]
+    返回类型[[{'content':'','ok_split':True or False}......]，[{'content':'','ok_split':True or False}......]，[{'content':'','ok_split':True or False}......]......]
+        '''
+    #特殊字眼第一节 第二节不合
+    def  big_tile(self,pages_text_list):
+        import re
+
+        def split_text_by_sections(text):
+            # 正则表达式匹配从第一节到第九节
+            section_pattern = re.compile(r'(第([一二三四五六七八九])节)')
+
+            # 找到所有匹配的节标题
+            matches = list(section_pattern.finditer(text))
+
+            # 如果没有匹配，则不处理文本
+            if not matches:
+                return [text]
+
+            # 如果有匹配，则根据规则分割文本
+            segments = []
+
+            # 将文本开头到第一个节标题之前的内容作为一个独立的块
+            first_match = matches[0]
+            segments.append(text[:first_match.start()])
+
+            # 将每个节标题及其后续内容作为一个分块
+            start = first_match.start()
+            for i, match in enumerate(matches):
+                # 如果不是最后一个匹配，将当前匹配到下一个匹配之间的文本加入到分段中
+                if i < len(matches) - 1:
+                    next_match = matches[i + 1]
+                    segments.append(text[start:next_match.start()])
+                # 更新下一个分段的开始位置
+                start = match.start()
+
+            # 添加最后一个匹配到文本末尾的内容
+            segments.append(text[start:])
+
+            return segments
+
+        new_con_pages = []
+        for  item_page in pages_text_list:
+            new_page = []
+            for item in item_page:
+                flg = item['ok_split']
+                if flg:
+                    new_page.append(item)
+                else:
+                    res_page_item_select_list = split_text_by_sections(item['content'])
+                    for seg in res_page_item_select_list:
+                        items = {'content': seg, 'ok_split': False }
+                        new_page.append(items)
+            new_con_pages.append(new_page)
+
+
+
+
+        '''
+        测试
+        '''
+        # set_len = 5
+        # for j,item in enumerate(new_con_pages[:set_len]):
+        #     print('一共几个chunk', len(item))
+        #     for len_item in item:
+        #         print(len_item)
+        #         print('len(i[content])',len(len_item['content']))
+        #         print('一页几个chunk',len(item))
+        #         print('page',j)
+        #         print('*******************************************************************************************************************************************')
+        #     print('--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------')
+
+        return new_con_pages  # 返回处理后的文本块列表
 
 
 
@@ -344,12 +399,12 @@ class My_Chunk_08A():
 
         res1 = self.Abstract_extract(pages_text_list)
         res4 = self.big_tile(res1)
-        return res4
-        res2 = self.merge_child_title(res1)
-        return res2
-        res3 = self.child_title(res2)
 
-        res4 = self.big_tile(res3)
+        res3 = self.child_title(res4)
+        return res3
+
+        #未完成3个  加油
+        res2 = self.merge_child_title(res1)
 
         res5 = self.num_split(res4)
 
@@ -371,7 +426,7 @@ if __name__ == '__main__':
     from langchain_community.document_loaders import PyPDFLoader
     # 加载PDF文件
     # file_path = r'D:\桌面\chun_github1\project\data_pdf\cancer.pdf'
-    loader = PyPDFLoader(r"D:\桌面\chun_github1\project\data_pdf\皮肤性病电子教材——常用鉴别诊断表.pdf")
+    loader = PyPDFLoader(r"D:\桌面\chun_github1\project\data_pdf\pdf7.pdf")
     datas = loader.load_and_split()
     # print(data)
     # data = datas[0]
