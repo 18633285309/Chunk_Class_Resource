@@ -247,6 +247,10 @@ class My_Chunk_08A():
             # 找到所有匹配项的起始索引
             title_matches = [m.start() for m in title_pattern.finditer(text)]
 
+            # 如果没有找到标题，返回原始文本
+            if not title_matches:
+                return [text.strip()]
+
             # 将每个标题及其后面的文本分割成块
             blocks = []
             for i in range(len(title_matches)):
@@ -256,12 +260,11 @@ class My_Chunk_08A():
                 blocks.append(block)
 
             # 检查最后一个块是否需要进一步分割
-            if blocks:  # 确保blocks不为空
-                sentence_pattern = re.compile(r'\.\s*\n')
-                last_block_sentences = sentence_pattern.split(blocks[-1])
-                if len(last_block_sentences) > 1:
-                    # 如果最后一个块包含多个句子，分割它们
-                    blocks[-1:] = [sentence.strip() for sentence in last_block_sentences if sentence.strip()]
+            sentence_pattern = re.compile(r'\.\s*\n')
+            last_block_sentences = sentence_pattern.split(blocks[-1])
+            if len(last_block_sentences) > 1:
+                # 如果最后一个块包含多个句子，分割它们
+                blocks[-1:] = [sentence.strip() for sentence in last_block_sentences if sentence.strip()]
 
             return blocks
 
@@ -282,19 +285,19 @@ class My_Chunk_08A():
 
 
 
-        '''
-        测试
-        '''
-        set_len = 5
-        for j,item in enumerate(new_con_pages[:set_len]):
-            print('一共几个chunk', len(item))
-            for len_item in item:
-                print(len_item)
-                print('len(i[content])',len(len_item['content']))
-                print('一页几个chunk',len(item))
-                print('page',j)
-                print('*******************************************************************************************************************************************')
-            print('--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------')
+        # '''
+        # 测试
+        # '''
+        # set_len = 10
+        # for j,item in enumerate(new_con_pages[:set_len]):
+        #     print('一共几个chunk', len(item))
+        #     for len_item in item:
+        #         print(len_item)
+        #         print('len(i[content])',len(len_item['content']))
+        #         print('一页几个chunk',len(item))
+        #         print('page',j)
+        #         print('*******************************************************************************************************************************************')
+        #     print('--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------')
 
         return new_con_pages  # 返回处理后的文本块列表
 
@@ -391,24 +394,83 @@ class My_Chunk_08A():
         '''
     #段落前几个字或字符相同的合起来
     def same_prefix(self,pages_text_list):
-        pass
+        import re
 
+        def merge_three_sentences(text, keyword):
+            # 分割文本为句子列表
+            sentences = text.split('。')
+
+            # 检查是否有连续三句以关键字开头
+            count = 0
+            start_index = -1
+            for i, sentence in enumerate(sentences):
+                if sentence.strip().startswith(keyword):
+                    count += 1
+                    if count == 1:
+                        start_index = i
+                    elif count == 3:
+                        # 合并三句话
+                        block_a = ' '.join(sentences[start_index:i + 1])
+                        # 获取块A前面的内容和块A后面的内容
+                        block_before = ' '.join(sentences[:start_index])
+                        block_after = ' '.join(sentences[i + 1:])
+                        return [block_before, block_a, block_after]
+                else:
+                    count = 0
+
+            # 如果没有找到连续三句以关键字开头的句子，返回原文
+            return [text]
+
+
+
+
+        new_con_pages = []
+        for  item_page in pages_text_list:
+            new_page = []
+            for item in item_page:
+                flg = item['ok_split']
+                if flg:
+                    new_page.append(item)
+                else:
+                    keyword = "证据水平"
+                    res_page_item_select_list = merge_three_sentences(item['content'],keyword)
+                    for seg in res_page_item_select_list:
+                        items = {'content': seg, 'ok_split': False }
+                        new_page.append(items)
+            new_con_pages.append(new_page)
+
+        '''
+        测试
+        '''
+        set_len = 5
+        for j,item in enumerate(new_con_pages[:set_len]):
+            print('一共几个chunk', len(item))
+            for len_item in item:
+                print(len_item)
+                print('len(i[content])',len(len_item['content']))
+                print('一页几个chunk',len(item))
+                print('page',j)
+                print('*******************************************************************************************************************************************')
+            print('--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------')
 
 
     def main(self,pages_text_list):
 
         res1 = self.Abstract_extract(pages_text_list)
+
         res4 = self.big_tile(res1)
 
         res3 = self.child_title(res4)
-        return res3
 
-        #未完成3个  加油
+        res6 = self.same_prefix(res3)
+        return res6
+
+        #未完成2个  加油
         res2 = self.merge_child_title(res1)
 
         res5 = self.num_split(res4)
 
-        res6 = self.same_prefix(res5)
+
 
 
 
@@ -426,15 +488,9 @@ if __name__ == '__main__':
     from langchain_community.document_loaders import PyPDFLoader
     # 加载PDF文件
     # file_path = r'D:\桌面\chun_github1\project\data_pdf\cancer.pdf'
-    loader = PyPDFLoader(r"D:\桌面\chun_github1\project\data_pdf\pdf7.pdf")
+    loader = PyPDFLoader(r"D:\桌面\chun_github1\project\data_pdf\rag_test.pdf")
     datas = loader.load_and_split()
-    # print(data)
-    # data = datas[0]
-    # print(data)
 
-    # pages_text_list = read_one_pdf(file_path)
     pages_text_list = [data.page_content for data in datas]
-    # print(pages_text_list[0])
-    res = my_chunk_08.main(pages_text_list)
 
-    # print(res)
+    res = my_chunk_08.main(pages_text_list)
